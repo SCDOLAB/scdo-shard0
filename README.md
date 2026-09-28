@@ -1,3 +1,5 @@
+> **SCDO shard 0 fork.** This is the `scdo` branch of SCDOLAB/scdo-shard0: core-geth v1.12.23 plus a few SCDO tools (stratum proxy, faucet, genesis for chain ID 5680). See **[SCDO.md](SCDO.md)**. Everything below is the unchanged upstream core-geth README.
+
 ## CoreGeth: An Ethereum Protocol Provider
 
 > An [ethereum/go-ethereum](https://github.com/ethereum/go-ethereum) downstream effort to make the Ethereum Protocol accessible and extensible for a diverse ecosystem.
