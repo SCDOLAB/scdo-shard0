@@ -224,6 +224,12 @@ type Config struct {
 	// When this value is *true, ECBP100 will not (ever) be disabled; when *false, it will never be enabled.
 	ECBP1100NoDisable *bool `toml:",omitempty"`
 
+	// SCDO signed checkpoints (empty signer list = disabled).
+	SCDOCheckpointSigners   []common.Address `toml:",omitempty"`
+	SCDOCheckpointThreshold int              `toml:",omitempty"`
+	SCDOCheckpointURLs      []string         `toml:",omitempty"`
+	SCDOCheckpointInterval  time.Duration    `toml:",omitempty"`
+
 	// OverrideShanghai (TODO: remove after the fork)
 	OverrideShanghai *uint64 `toml:",omitempty"`
 

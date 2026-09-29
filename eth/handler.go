@@ -99,6 +99,7 @@ type handlerConfig struct {
 }
 
 type handler struct {
+	scdoBans   *scdoPeerBans // SCDO: temporary bans for checkpoint-conflicting peers
 	networkID  uint64
 	forkFilter forkid.Filter // Fork ID filter, constant across the lifetime of the node
 
@@ -143,6 +144,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 		config.EventMux = new(event.TypeMux) // Nicety initialization for tests
 	}
 	h := &handler{
+		scdoBans:       newSCDOPeerBans(),
 		networkID:      config.Network,
 		forkFilter:     forkid.NewFilter(config.Chain),
 		eventMux:       config.EventMux,
@@ -355,6 +357,11 @@ func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
 		return p2p.DiscQuitting
 	}
 	defer h.decHandlers()
+	// SCDO: refuse peers that recently served checkpoint-conflicting chains.
+	if h.scdoBans.banned(peer.ID(), scdoIPOf(peer.RemoteAddr())) {
+		peer.Log().Debug("Rejecting peer banned for SCDO checkpoint conflicts")
+		return p2p.DiscUselessPeer
+	}
 
 	// If the peer has a `snap` extension, wait for it to connect so we can have
 	// a uniform initialization/teardown mechanism

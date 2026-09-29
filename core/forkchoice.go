@@ -149,6 +149,13 @@ func (f *ForkChoice) ReorgNeeded(current *types.Header, extern *types.Header) (b
 		}
 	}
 
+	// SCDO signed checkpoints: a validly signed checkpoint overrides TD.
+	if bc, ok := f.chain.(*BlockChain); ok {
+		if decided, cpReorg := bc.scdoForkChoice(current, extern); decided {
+			return cpReorg, nil
+		}
+	}
+
 	// If reorg is not needed (false), then we can just return.
 	// The following logic adds a condition only in the case where a reorg would
 	// otherwise be indicated.

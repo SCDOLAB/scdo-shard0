@@ -258,6 +258,26 @@ func (ps *peerSet) peerWithHighestTD() *eth.Peer {
 	return bestPeer
 }
 
+// peerWithHighestTDFiltered is peerWithHighestTD skipping peers for which skip returns true.
+func (ps *peerSet) peerWithHighestTDFiltered(skip func(*eth.Peer) bool) *eth.Peer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	var (
+		bestPeer *eth.Peer
+		bestTd   *big.Int
+	)
+	for _, p := range ps.peers {
+		if skip != nil && skip(p.Peer) {
+			continue
+		}
+		if _, td, _ := p.Head(); bestPeer == nil || td.Cmp(bestTd) > 0 {
+			bestPeer, bestTd = p.Peer, td
+		}
+	}
+	return bestPeer
+}
+
 // close disconnects all peers.
 func (ps *peerSet) close() {
 	ps.lock.Lock()

@@ -56,6 +56,10 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	if v.bc.HasBlockAndState(block.Hash(), block.NumberU64()) {
 		return ErrKnownBlock
 	}
+	// SCDO signed checkpoints: never import a block conflicting with a checkpoint.
+	if err := v.bc.scdoCheckBlock(block.Header()); err != nil {
+		return err
+	}
 
 	// Header validity is known at this point. Here we verify that uncles, transactions
 	// and withdrawals given in the block body match the header.

@@ -76,6 +76,7 @@ type Ethereum struct {
 	txPool *txpool.TxPool
 
 	blockchain         *core.BlockChain
+	scdoCPSvc          *scdoCheckpointService // SCDO signed checkpoint distribution (nil = disabled)
 	handler            *handler
 	ethDialCandidates  enode.Iterator
 	snapDialCandidates enode.Iterator
@@ -260,6 +261,10 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 		}
 	}
 
+	if err := eth.setupSCDOCheckpoints(config.SCDOCheckpointSigners, config.SCDOCheckpointThreshold, config.SCDOCheckpointURLs, config.SCDOCheckpointInterval); err != nil {
+		return nil, err
+	}
+
 	if config.BlobPool.Datadir != "" {
 		config.BlobPool.Datadir = stack.ResolvePath(config.BlobPool.Datadir)
 	}
@@ -382,6 +387,9 @@ func (s *Ethereum) APIs() []rpc.API {
 		}, {
 			Namespace: "net",
 			Service:   s.netRPCService,
+		}, {
+			Namespace: "scdo",
+			Service:   &SCDOCheckpointAPI{s},
 		},
 	}...)
 }
@@ -588,6 +596,9 @@ func (s *Ethereum) Start() error {
 	}
 	// Start the networking layer and the light server if requested
 	s.handler.Start(maxPeers)
+	if s.scdoCPSvc != nil {
+		s.scdoCPSvc.start()
+	}
 	return nil
 }
 
@@ -598,6 +609,9 @@ func (s *Ethereum) Stop() error {
 	s.ethDialCandidates.Close()
 	s.snapDialCandidates.Close()
 	s.handler.Stop()
+	if s.scdoCPSvc != nil {
+		s.scdoCPSvc.stop()
+	}
 
 	// Then stop everything else.
 	s.bloomIndexer.Close()

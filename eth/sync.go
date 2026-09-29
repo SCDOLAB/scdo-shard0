@@ -214,7 +214,9 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 	// We have enough peers, pick the one with the highest TD, but avoid going
 	// over the terminal total difficulty. Above that we expect the consensus
 	// clients to direct the chain head to sync to.
-	peer := cs.handler.peers.peerWithHighestTD()
+	peer := cs.handler.peers.peerWithHighestTDFiltered(func(p *eth.Peer) bool {
+		return cs.handler.scdoBans.banned(p.ID(), scdoIPOf(p.RemoteAddr()))
+	})
 	if peer == nil {
 		return nil
 	}
@@ -291,6 +293,11 @@ func (h *handler) doSync(op *chainSyncOp) error {
 	// Run the sync cycle, and disable snap sync if we're past the pivot block
 	err := h.downloader.LegacySync(op.peer.ID(), op.head, op.td, h.chain.Config().GetEthashTerminalTotalDifficulty(), op.mode)
 	if err != nil {
+		if isSCDOCheckpointConflict(err) {
+			d := h.scdoBans.note(op.peer.ID(), scdoIPOf(op.peer.RemoteAddr()))
+			log.Warn("Banning peer for SCDO checkpoint-conflicting chain", "peer", op.peer.ID()[:16], "addr", op.peer.RemoteAddr(), "duration", d)
+			h.removePeer(op.peer.ID())
+		}
 		return err
 	}
 	h.enableSyncedFeatures()

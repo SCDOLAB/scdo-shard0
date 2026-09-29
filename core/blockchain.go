@@ -264,6 +264,8 @@ type BlockChain struct {
 
 	artificialFinalityNoDisable     *int32 // manual override prevents disabling artificial finality feature activation
 	artificialFinalityEnabledStatus int32  // toggles artificial finality features; will be always 1 if artificialFinalityForce=1
+
+	scdoCP atomic.Pointer[scdoCheckpointer] // SCDO signed checkpoints (nil = disabled)
 }
 
 // NewBlockChain returns a fully initialised block chain using information

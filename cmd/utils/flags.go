@@ -1085,6 +1085,28 @@ Please note that --` + MetricsHTTPFlag.Name + ` must be set to start the server.
 		Usage:    "Manually specify the ECBP-1100 (MESS) deactivation block number, overriding the bundled setting",
 		Category: flags.EthCategory,
 	}
+	SCDOCheckpointSignersFlag = &cli.StringFlag{
+		Name:     "scdo.checkpoint.signers",
+		Usage:    "Comma-separated addresses of authorised SCDO checkpoint signers (enables signed checkpoints)",
+		Category: flags.EthCategory,
+	}
+	SCDOCheckpointThresholdFlag = &cli.IntFlag{
+		Name:     "scdo.checkpoint.threshold",
+		Usage:    "Number of distinct authorised signatures a checkpoint needs",
+		Value:    1,
+		Category: flags.EthCategory,
+	}
+	SCDOCheckpointURLFlag = &cli.StringFlag{
+		Name:     "scdo.checkpoint.url",
+		Usage:    "Comma-separated checkpoint sources (https://..., http://..., file:///...) polled for the latest signed checkpoint",
+		Category: flags.EthCategory,
+	}
+	SCDOCheckpointPollFlag = &cli.DurationFlag{
+		Name:     "scdo.checkpoint.poll",
+		Usage:    "Checkpoint source poll interval",
+		Value:    30 * time.Second,
+		Category: flags.EthCategory,
+	}
 	ECBP1100NoDisableFlag = &cli.BoolFlag{
 		Name:     "ecbp1100.nodisable",
 		Usage:    "Short-circuit ECBP-1100 (MESS) disable mechanisms; (yields a permanent-once-activated state, deactivating auto-shutoff mechanisms)",
@@ -1956,6 +1978,7 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *ethconfig.Config) {
 	setMiner(ctx, &cfg.Miner)
 	setRequiredBlocks(ctx, cfg)
 	setLes(ctx, cfg)
+	setSCDOCheckpoints(ctx, cfg)
 
 	// Cap the cache allowance and tune the garbage collector
 	mem, err := gopsutil.VirtualMemory()
@@ -2640,4 +2663,26 @@ func MakeTrieDatabase(ctx *cli.Context, disk ethdb.Database, preimage bool, read
 		config.PathDB = pathdb.Defaults
 	}
 	return triedb.NewDatabase(disk, config)
+}
+
+// setSCDOCheckpoints applies the SCDO signed checkpoint flags.
+func setSCDOCheckpoints(ctx *cli.Context, cfg *ethconfig.Config) {
+	if v := ctx.String(SCDOCheckpointSignersFlag.Name); v != "" {
+		cfg.SCDOCheckpointSigners = nil
+		for _, a := range strings.Split(v, ",") {
+			a = strings.TrimSpace(a)
+			if a == "" {
+				continue
+			}
+			if !common.IsHexAddress(a) {
+				Fatalf("Invalid --%s address: %q", SCDOCheckpointSignersFlag.Name, a)
+			}
+			cfg.SCDOCheckpointSigners = append(cfg.SCDOCheckpointSigners, common.HexToAddress(a))
+		}
+	}
+	cfg.SCDOCheckpointThreshold = ctx.Int(SCDOCheckpointThresholdFlag.Name)
+	if v := ctx.String(SCDOCheckpointURLFlag.Name); v != "" {
+		cfg.SCDOCheckpointURLs = strings.Split(v, ",")
+	}
+	cfg.SCDOCheckpointInterval = ctx.Duration(SCDOCheckpointPollFlag.Name)
 }
